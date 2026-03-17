@@ -1,58 +1,59 @@
-import { useNavigate } from "react-router-dom"
-import { useState } from "react"
-import GameButton from "../components/GameButton"
-import Profile from "../components/Profile"
-import Stats from "../components/Stats"
-import Settings from "../components/Settings"
+import bg from "../assets/images/home-bg.jpeg"
 
 function Home() {
-    const navigate = useNavigate()
-    const [openSettings, setOpenSettings] = useState(false)
-
     return (
-        <div className="h-screen flex flex-col justify-between p-6">
+        <div className="home-container">
+
+            {/* BACKGROUND */}
+            <img src={bg} className="bg-image" />
+
+            {/* DARK OVERLAY */}
+            <div className="overlay" />
 
             {/* TOP BAR */}
-            <div className="flex justify-between items-center">
-                <Stats />
-                <Profile />
-            </div>
-
-            {/* CENTER CHARACTER */}
-            <div className="flex flex-col items-center">
-
-                <div className="relative">
-                    <div className="absolute inset-0 blur-3xl bg-red-600 opacity-30 rounded-full"></div>
-
-                    <div className="w-56 h-56 bg-gray-800 rounded-xl flex items-center justify-center">
-                        Character
-                    </div>
+            <div className="top-bar">
+                <div>
+                    <h2>ADITYA</h2>
+                    <p>Ralkzen Elite</p>
                 </div>
-
-                <h2 className="mt-4 text-lg text-gray-400">Shadow Fighter</h2>
+                <div className="coins">2450</div>
             </div>
 
-            {/* MENU BUTTONS */}
-            <div className="flex flex-col items-center gap-4 mb-10">
+            {/* LEFT MENU */}
+            <div className="left-menu">
+                {["LOBBY", "AGENTS", "LOADOUT", "STATS", "LEADERBOARD", "STORE"].map(item => (
+                    <div key={item} className="menu-item">{item}</div>
+                ))}
+            </div>
 
-                <GameButton text="⚔️ Start Game" onClick={() => navigate("/game")} />
-                <GameButton text="🌐 Multiplayer" />
-                <GameButton text="🎯 Training" />
+            {/* CENTER */}
+            <div className="center-box">
 
-                <button
-                    onClick={() => setOpenSettings(true)}
-                    className="text-gray-400 hover:text-white"
-                >
-                    ⚙️ Settings
+                <button className="play-btn">
+                    PLAY MATCH
                 </button>
 
+                <div className="sub-buttons">
+                    <button>RANKED MODE</button>
+                    <button>CUSTOM GAME</button>
+                </div>
+
+                <button className="training-btn">TRAINING</button>
+
             </div>
 
-            {/* SETTINGS MODAL */}
-            <Settings
-                isOpen={openSettings}
-                onClose={() => setOpenSettings(false)}
-            />
+            {/* RIGHT PANEL */}
+            <div className="party-box">
+                <h3>PARTY</h3>
+                <div className="party-item">YOU</div>
+                <div className="party-item">+ INVITE</div>
+                <div className="party-item">+ INVITE</div>
+            </div>
+
+            {/* BOTTOM BAR */}
+            <div className="bottom-bar">
+                MODE: DEATHMATCH &nbsp; | &nbsp; PING: 28ms &nbsp; | &nbsp; EVENT: NIGHTFALL RISING
+            </div>
 
         </div>
     )

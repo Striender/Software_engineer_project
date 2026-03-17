@@ -2,13 +2,152 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    font-family: Arial, sans-serif;
 }
 
-html,
-body,
-#root {
+.home-container {
+    position: fixed;
     width: 100%;
     height: 100%;
     overflow: hidden;
-    background: black;
+    color: white;
+}
+
+/* BACKGROUND */
+.bg-image {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.overlay {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+}
+
+/* TOP BAR */
+.top-bar {
+    position: absolute;
+    top: 20px;
+    left: 40px;
+    right: 40px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.top-bar h2 {
+    font-size: 22px;
+}
+
+.top-bar p {
+    font-size: 14px;
+    opacity: 0.7;
+}
+
+.coins {
+    font-size: 18px;
+}
+
+/* LEFT MENU */
+.left-menu {
+    position: absolute;
+    top: 50%;
+    left: 40px;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.menu-item {
+    width: 200px;
+    padding: 14px;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.menu-item:hover {
+    background: rgba(255, 0, 0, 0.3);
+}
+
+/* CENTER */
+.center-box {
+    position: absolute;
+    top: 55%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+}
+
+/* PLAY BUTTON */
+.play-btn {
+    width: 420px;
+    padding: 20px;
+    font-size: 26px;
+    font-weight: bold;
+    border: none;
+    background: linear-gradient(90deg, #007bff, #00d4ff);
+    color: white;
+    cursor: pointer;
+    margin-bottom: 20px;
+    box-shadow: 0 0 20px #00d4ff;
+}
+
+/* SUB BUTTONS */
+.sub-buttons {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+}
+
+.sub-buttons button {
+    padding: 12px 20px;
+    background: rgba(0, 0, 0, 0.7);
+    border: 1px solid #555;
+    color: white;
+    cursor: pointer;
+}
+
+/* TRAINING */
+.training-btn {
+    margin-top: 15px;
+    padding: 12px 40px;
+    background: rgba(0, 0, 0, 0.7);
+    border: 1px solid #555;
+    color: white;
+}
+
+/* RIGHT PANEL */
+.party-box {
+    position: absolute;
+    right: 40px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.party-box h3 {
+    margin-bottom: 10px;
+}
+
+.party-item {
+    width: 160px;
+    padding: 12px;
+    margin-top: 10px;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid #555;
+}
+
+/* BOTTOM BAR */
+.bottom-bar {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 14px;
+    opacity: 0.8;
 }
