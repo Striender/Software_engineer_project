@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEON DUEL 2v2</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════
+     MENU SCREEN
+     ═══════════════════════════════════════════════ -->
+<div class="screen on" id="sMenu">
+  <div class="logo">NEON DUEL</div>
+  <div class="tagline">2v2 TACTICAL · FOG OF WAR · ONLINE</div>
+  <div class="srv-row">
+    <input class="srv-inp" id="wsUrl" placeholder="wss://your-ngrok-url.ngrok-free.app">
+    <button class="srv-btn" onclick="connectWS()">CONNECT</button>
+  </div>
+  <div class="srv-st" id="srvSt">NOT CONNECTED</div>
+  <div class="menu-btns">
+    <button class="mbtn" id="playBtn" disabled onclick="goLobby()">ENTER LOBBY</button>
+    <button class="mbtn" style="border-color:#ffd700;color:#ffd700" onclick="goKeys()">KEYBINDS</button>
+    <button class="mbtn" style="border-color:#00ff88;color:#00ff88" onclick="goTester()">TESTER</button>
+  </div>
+  <div class="hint">
+    HOST: run server.py then expose port 8080 with ngrok<br>
+    PLAYERS: paste the wss:// URL above · WASD MOVE · SPACE SHOOT · Q E R ABILITIES
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     KEYBIND SCREEN
+     ═══════════════════════════════════════════════ -->
+<div class="screen" id="sKeys">
+  <div class="kb-title">// KEYBINDINGS //</div>
+  <div class="kb-grid" id="kbGrid"></div>
+  <button class="kb-save" onclick="saveKeys()">SAVE & BACK</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     TESTER MODE SCREEN
+     ═══════════════════════════════════════════════ -->
+<div class="screen" id="sTester">
+  <div class="lbox" style="width:400px">
+    <div class="ltitle" style="color:#00ff88;text-shadow:0 0 12px #00ff88">// TESTER MODE //</div>
+    <div style="font-size:10px;color:#555;letter-spacing:3px;text-align:center;margin-bottom:18px">LOCAL 1v1 · NO SERVER NEEDED</div>
+    <div class="lrow"><input class="linp" id="tpwd" type="password" placeholder="PASSWORD" maxlength="20"></div>
+    <div style="font-size:9px;color:#e63946;letter-spacing:2px;text-align:center;margin-bottom:12px;min-height:14px" id="tpwderr"></div>
+    <div class="lrow" style="justify-content:center">
+      <button class="lb" style="border-color:#00ff88;color:#00ff88" onclick="startTester()">START TEST MATCH</button>
+      <button class="lb" onclick="showScreen('sMenu')">BACK</button>
+    </div>
+    <hr class="lsep">
+    <div style="font-size:9px;color:#333;letter-spacing:2px;line-height:2">
+      P1: WASD MOVE · SPACE SHOOT · Q E R ABILITIES<br>
+      P2: ARROWS MOVE · ENTER SHOOT · U I O ABILITIES
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     LOBBY SCREEN
+     ═══════════════════════════════════════════════ -->
+<div class="screen" id="sLobby">
+  <div class="lbox">
+    <div class="ltitle">// LOBBY //</div>
+    <div id="ljoin">
+      <div class="lrow">
+        <input class="linp" id="nameInp" placeholder="YOUR NAME" maxlength="10">
+      </div>
+      <div class="lrow">
+        <button class="lb" onclick="createRoom()">CREATE ROOM</button>
+        <input class="linp" id="codeInp" placeholder="ROOM CODE" maxlength="6">
+        <button class="lb" onclick="joinRoom()">JOIN</button>
+      </div>
+    </div>
+    <div id="lroom" style="display:none">
+      <div class="lcode">ROOM CODE — SHARE WITH YOUR TEAM
+        <span class="lcval" id="lcval">------</span>
+      </div>
+      <hr class="lsep">
+      <div style="font-size:9px;letter-spacing:3px;color:#555;margin-bottom:8px">MATCH MODE</div>
+      <div class="lrow" style="margin-bottom:14px">
+        <button class="lb" id="mode1v1Btn" onclick="setMode(1)" style="flex:1;text-align:center">⚔ 1v1</button>
+        <button class="lb" id="mode2v2Btn" onclick="setMode(2)" style="flex:1;text-align:center;border-color:#ffd700;color:#ffd700">🛡 2v2</button>
+      </div>
+      <div style="font-size:9px;letter-spacing:3px;color:#555;margin-bottom:8px">PICK YOUR TEAM</div>
+      <div class="lrow">
+        <button class="lb a" onclick="pickTeam('A')">⚔ TEAM A</button>
+        <button class="lb b" onclick="pickTeam('B')">🛡 TEAM B</button>
+      </div>
+      <hr class="lsep">
+      <div style="font-size:9px;letter-spacing:3px;color:#555;margin-bottom:7px">PLAYERS (MAX <span id="maxTxt">4</span>)</div>
+      <div id="lplayers"></div>
+      <div class="lst" id="lst">WAITING...</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     CHARACTER SELECT SCREEN
+     ═══════════════════════════════════════════════ -->
+<div class="screen" id="sSelect">
+  <div class="shdr">// AGENT SELECT //</div>
+  <div class="ssub" id="ssub">CHOOSE YOUR AGENT</div>
+  <div class="cards" id="scards"></div>
+  <div class="swait" id="swait">WAITING FOR ALL PLAYERS...</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     GAME ELEMENTS (canvas + HUD, always present)
+     ═══════════════════════════════════════════════ -->
+<canvas id="gc"></canvas>
+<canvas id="fogC"></canvas>
+<canvas id="mmC"></canvas>
+
+<div id="ntag"></div>
+
+<div id="hud">
+  <div class="hteam" id="hudA"></div>
+  <div class="hcenter">
+    <div class="hscore" id="hscore">0·0</div>
+    <div class="hround" id="hround">ROUND 1</div>
+  </div>
+  <div class="hteam r" id="hudB"></div>
+</div>
+
+<div id="kf"></div>
+<div id="elog"></div>
+
+<div id="rover">
+  <div class="rowt" id="rowt"></div>
+  <div class="rows_" id="rows_"></div>
+  <button class="rob" id="rob_">NEXT ROUND</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     PAUSE MENU (overlays everything)
+     ═══════════════════════════════════════════════ -->
+<div id="pauseMenu">
+  <div class="pause-box">
+    <div class="pause-title">PAUSED</div>
+    <div class="pause-sub" id="pauseRound">ROUND 1 · A:0  B:0</div>
+    <button class="pbtn" onclick="resumeGame()">▶ RESUME MATCH</button>
+    <button class="pbtn" onclick="pauseGoKeys()">⌨ KEYBINDINGS</button>
+    <button class="pbtn danger" onclick="pauseQuit()">✕ QUIT TO LOBBY</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SCRIPTS — load order matters!
+     1. characters  (data, no dependencies)
+     2. engine      (game logic, needs CHARS)
+     3. network     (networking, needs engine globals)
+     4. ui          (rendering + input, needs all above)
+     ═══════════════════════════════════════════════ -->
+<script src="js/characters.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/network.js"></script>
+<script src="js/ui.js"></script>
+
+</body>
+</html>
