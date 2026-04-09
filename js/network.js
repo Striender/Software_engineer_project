@@ -49,12 +49,14 @@ function send(msg){
 
 // ── Screen helpers ───────────────────────────────
 function showScreen(id){
-  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
-  if(id) document.getElementById(id).classList.add('on');
+  document.querySelectorAll('.screen').forEach(s=>{ if(s) s.classList.remove('on'); });
+  const el = id ? document.getElementById(id) : null;
+  if(el) el.classList.add('on');
 }
 function showGame(){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
-  gc.style.display = fogC.style.display = mmC.style.display = 'block';
+  gc.style.display = mmC.style.display = 'block';
+  fogC.style.display = 'none'; // fog now drawn on gc directly
   document.getElementById('hud').style.display  = 'flex';
   document.getElementById('ntag').style.display = 'block';
 }

@@ -11,6 +11,20 @@ let keys = {};
 let score  = [0, 0];
 let roundN = 1;
 const MAX_ROUNDS = 7;
+let gamePaused = false;
+
+// ── Canvas resize (defined here so engine can call it) ────
+function rsz(W,H){
+  // W,H here is MAP size — canvases should be SCREEN size
+  const SW = gs && gs.SW ? gs.SW : window.innerWidth;
+  const SH = gs && gs.SH ? gs.SH : window.innerHeight-100;
+  const gc=document.getElementById('gc');
+  const fogC=document.getElementById('fogC');
+  const mmC=document.getElementById('mmC');
+  if(gc)  { gc.width=SW;   gc.height=SH;   }
+  if(fogC){ fogC.width=SW; fogC.height=SH; }
+  if(mmC) { mmC.width=150; mmC.height=112; }
+}
 
 // ── Keybindings ──────────────────────────────────
 const DEFAULT_KEYS = { up:'w', down:'s', left:'a', right:'d', fire:' ', ab1:'q', ab2:'e', ab3:'r' };
@@ -34,7 +48,14 @@ const KB2 = { up:'ArrowUp', down:'ArrowDown', left:'ArrowLeft', right:'ArrowRigh
 function buildServerKeys(){
   const out = buildServerKeysFor(KB);
   const me  = gs && gs.players[myId];
-  if(me) out._aim = Math.atan2(mouseY - me.y, mouseX - me.x);
+  if(me){
+    const mw = mouseWorld(); // mouse in world coords
+    const dx = mw.x - me.x, dy = mw.y - me.y;
+    out._aim     = Math.atan2(dy, dx);
+    out._aimDist = Math.hypot(dx, dy);
+  }
+  // Block fire while ability is equipped
+  if(equippedAbility){ delete out[' ']; }
   return out;
 }
 
@@ -58,17 +79,20 @@ function buildServerKeysFor(kb){
 }
 
 // ── Game state builders ──────────────────────────
+const MAP_SCALE = 2; // map is 4x the screen size
+
 function buildState(){
-  const W=window.innerWidth, H=window.innerHeight-100;
+  const SW=window.innerWidth, SH=window.innerHeight-100;
+  const W=SW*MAP_SCALE, H=SH*MAP_SCALE;
   const tA = Object.entries(lobby).filter(([,p])=>p.team==='A');
   const tB = Object.entries(lobby).filter(([,p])=>p.team==='B');
   const players = {};
   const is1v1 = matchMode===1;
-  const spA = is1v1?[{x:W*0.15,y:H/2}]:[{x:W*0.12,y:H*0.35},{x:W*0.12,y:H*0.65}];
-  const spB = is1v1?[{x:W*0.85,y:H/2}]:[{x:W*0.88,y:H*0.35},{x:W*0.88,y:H*0.65}];
+  const spA = is1v1?[{x:W*0.87,y:H*0.22}]:[{x:W*0.87,y:H*0.18},{x:W*0.87,y:H*0.28}];
+  const spB = is1v1?[{x:W*0.87,y:H*0.78}]:[{x:W*0.87,y:H*0.72},{x:W*0.87,y:H*0.82}];
   tA.slice(0,is1v1?1:2).forEach(([pid,p],i)=>{ players[pid]=mkP(pid,p.name,spA[i].x,spA[i].y,CHARS[p.charIdx],'A',true); });
   tB.slice(0,is1v1?1:2).forEach(([pid,p],i)=>{ players[pid]=mkP(pid,p.name,spB[i].x,spB[i].y,CHARS[p.charIdx],'B',false); });
-  return {players,walls:mkWalls(W,H),projs:[],parts:[],zones:[],decoys:[],W,H,tick:0,ended:false,score:[0,0],round:1};
+  return {players,walls:mkWalls(W,H),projs:[],parts:[],zones:[],decoys:[],W,H,SW,SH,tick:0,ended:false,score:[0,0],round:1};
 }
 
 function mkP(pid,name,x,y,ch,team,facR){
@@ -85,15 +109,131 @@ function mkP(pid,name,x,y,ch,team,facR){
 }
 
 function mkWalls(W,H){
-  return [
-    {x:0,y:0,w:W,h:10},{x:0,y:H-10,w:W,h:10},
-    {x:0,y:0,w:10,h:H},{x:W-10,y:0,w:10,h:H},
-    {x:W/2-15,y:H*0.15,w:30,h:H*0.70},
-    {x:W*0.28,y:H*0.10,w:22,h:H*0.32},{x:W*0.65,y:H*0.10,w:22,h:H*0.32},
-    {x:W*0.28,y:H*0.58,w:22,h:H*0.32},{x:W*0.65,y:H*0.58,w:22,h:H*0.32},
-    {x:W*0.08,y:H*0.42,w:100,h:16},{x:W*0.75,y:H*0.42,w:100,h:16},
-    {x:W*0.38,y:H*0.12,w:90,h:14},{x:W*0.38,y:H*0.74,w:90,h:14},
-  ];
+  const walls = [];
+  // Border walls (first 4 — never cast shadows)
+  walls.push(
+    {x:0,      y:0,      w:W,   h:12  }, // top
+    {x:0,      y:H-12,   w:W,   h:12  }, // bottom
+    {x:0,      y:0,      w:12,  h:H   }, // left
+    {x:W-12,   y:0,      w:12,  h:H   }  // right
+  );
+
+  // ── Helper: push a wall rect ──
+  const r=(x,y,w,h)=>walls.push({x,y,w,h});
+
+  // Map is W×H. Ascent-inspired layout divided into zones:
+  //   A Site: top-left quarter
+  //   Mid/Piazza: center
+  //   B Site: bottom-left quarter
+  //   A Main: left corridor connecting spawn-A to A site
+  //   B Main: right corridor connecting spawn-B to B site
+  //   Catwalk: top diagonal from A site to mid
+  //   Market: covered passage from mid to B site
+  //   Spawn A: top-right
+  //   Spawn B: bottom-right
+
+  const u = W/100; // 1 unit = 1% of width
+  const v = H/100; // 1 unit = 1% of height
+
+  // ── A SITE walls (top-left ~25% of map) ──
+  // Main box (top-left of site)
+  r(2*u, 8*v, 18*u, 3*v);   // top wall of site
+  r(2*u, 8*v, 3*v, 16*v);   // left wall of site (vertical)
+  r(2*u, 24*v, 20*u, 3*v);  // bottom wall of site
+
+  // A site big box
+  r(6*u, 11*v, 10*u, 10*v);
+
+  // A site cubby (right side of site)
+  r(18*u, 11*v, 6*u, 5*v);
+  r(18*u, 19*v, 6*u, 5*v);
+
+  // A site back wall connector
+  r(24*u, 8*v, 3*v, 16*v);
+
+  // ── A MAIN (left corridor top, connecting spawn to A site) ──
+  r(2*u, 30*v, 22*u, 3*v);  // top wall of A main
+  r(2*u, 42*v, 22*u, 3*v);  // bottom wall of A main
+  // pillar in A main
+  r(10*u, 33*v, 5*u, 6*v);
+
+  // ── CATWALK (A site → Mid, diagonal top) ──
+  r(27*u, 8*v, 3*v, 20*v);   // left wall of catwalk
+  r(38*u, 8*v, 3*v, 15*v);   // right wall of catwalk
+  r(27*u, 8*v, 14*u, 3*v);   // top wall
+  // catwalk box cover
+  r(29*u, 16*v, 7*u, 7*v);
+
+  // ── A LINK / HEAVEN (top corridor from catwalk to mid) ──
+  r(41*u, 8*v, 3*v, 20*v);   // left wall
+  r(54*u, 8*v, 3*v, 20*v);   // right wall
+  r(41*u, 8*v, 16*u, 3*v);   // top wall
+  // Heaven box
+  r(44*u, 12*v, 7*u, 8*v);
+
+  // ── TREE AREA (top-mid) ──
+  r(57*u, 8*v, 18*u, 3*v);   // top wall
+  r(57*u, 8*v, 3*v, 15*v);   // left wall
+  r(72*u, 8*v, 3*v, 15*v);   // right wall
+  // Tree object
+  r(62*u, 12*v, 6*u, 8*v);
+
+  // ── MID / PIAZZA (center of map) ──
+  // Mid is an open area with iconic mid doors and boxes
+  r(27*u, 42*v, 3*v, 20*v);  // left wall of mid
+  r(57*u, 42*v, 3*v, 20*v);  // right wall of mid
+  r(27*u, 62*v, 30*u, 3*v);  // bottom wall of mid (partial)
+
+  // Mid door left (small wall segment with gap = door)
+  r(30*u, 42*v, 6*u, 3*v);   // wall left of door
+  r(42*u, 42*v, 6*u, 3*v);   // wall right of door
+  // (gap from 36u to 42u = mid door opening)
+
+  // Mid boxes (cover objects)
+  r(32*u, 47*v, 7*u, 5*v);   // left mid box
+  r(48*u, 47*v, 7*u, 5*v);   // right mid box
+  r(39*u, 54*v, 9*u, 4*v);   // center mid box
+
+  // ── MARKET (covered passage mid → B, bottom-left of mid) ──
+  r(27*u, 65*v, 3*v, 14*v);  // left wall
+  r(42*u, 65*v, 3*v, 14*v);  // right wall
+  r(27*u, 65*v, 18*u, 3*v);  // top wall
+  r(27*u, 79*v, 18*u, 3*v);  // bottom wall
+  // Market box
+  r(31*u, 68*v, 7*u, 8*v);
+
+  // ── B MAIN (right corridor bottom, connecting spawn-B to B site) ──
+  r(57*u, 65*v, 3*v, 20*v);  // left wall
+  r(72*u, 65*v, 3*v, 20*v);  // right wall
+  r(57*u, 85*v, 15*u, 3*v);  // bottom wall connector
+  // B main pillar
+  r(62*u, 69*v, 5*u, 6*v);
+
+  // ── B SITE (bottom-left ~25% of map) ──
+  r(2*u, 70*v, 3*v, 22*v);   // left wall
+  r(2*u, 70*v, 24*u, 3*v);   // top wall
+  r(2*u, 92*v, 27*u, 3*v);   // bottom wall
+  r(26*u, 70*v, 3*v, 22*v);  // right wall
+
+  // B site main box (the large cover object)
+  r(6*u, 74*v, 12*u, 12*v);
+
+  // B site corner stack
+  r(20*u, 74*v, 4*u, 6*v);
+  r(20*u, 84*v, 4*u, 6*v);
+
+  // ── SPAWN DIVIDERS ──
+  // A side spawn corridor walls
+  r(75*u, 8*v, 3*v, 30*v);   // inner left wall of spawn A
+  r(75*u, 8*v, 22*u, 3*v);   // top spawn wall
+  r(75*u, 38*v, 22*u, 3*v);  // bottom spawn A wall
+
+  // B side spawn corridor walls
+  r(75*u, 62*v, 3*v, 30*v);  // inner wall of spawn B
+  r(75*u, 62*v, 22*u, 3*v);  // top spawn B wall
+  r(75*u, 92*v, 22*u, 3*v);  // bottom spawn wall
+
+  return walls;
 }
 
 function fixRefs(){
@@ -111,12 +251,12 @@ function fixRefs(){
 }
 
 function startHost(st){
-  gamePaused=false; gs=clone(st); if(!gs.parts)gs.parts=[];
+  gamePaused=false; equippedAbility=null; gs=clone(st); if(!gs.parts)gs.parts=[];
   fixRefs(); rsz(gs.W,gs.H); showGame(); setupNtag(); buildHUD();
   if(raf)cancelAnimationFrame(raf); raf=requestAnimationFrame(hostTick);
 }
 function startClient(st){
-  gamePaused=false; gs=clone(st); if(!gs.parts)gs.parts=[];
+  gamePaused=false; equippedAbility=null; gs=clone(st); if(!gs.parts)gs.parts=[];
   fixRefs(); rsz(gs.W,gs.H); showGame(); setupNtag(); buildHUD();
   if(raf)cancelAnimationFrame(raf); raf=requestAnimationFrame(clientTick);
 }
@@ -131,6 +271,28 @@ function hostUpdate(){
     if(!pr.trail) pr.trail=[];
     pr.trail.push({x:pr.x,y:pr.y,l:8,ml:8});
     pr.x+=pr.vx; pr.y+=pr.vy; pr.life--;
+
+    // Flash orb — explodes when life hits 0 or hits a wall
+    if(pr.flash){
+      if(pr.life<=0 || wHit(pr.x,pr.y,pr.size)){
+        // Explode — blind any enemy facing the flash
+        burst(pr.x,pr.y,'#ffff99',30);
+        Object.values(gs.players).filter(e=>e.alive&&e.team!==gs.players[pr.owner]?.team).forEach(e=>{
+          // Check if enemy is LOOKING TOWARD the flash orb
+          const toFlash = Math.atan2(pr.y-e.y, pr.x-e.x);
+          let diff = toFlash - (e.aimAngle||0);
+          while(diff >  Math.PI) diff -= Math.PI*2;
+          while(diff < -Math.PI) diff += Math.PI*2;
+          if(Math.abs(diff) < Math.PI*0.5){ // within 90° of aim = facing it
+            e.effects.flashed = 12; // ~200ms at 60fps
+            burst(e.x,e.y,'#ffff99',15);
+          }
+        });
+        return false;
+      }
+      return true;
+    }
+
     if(pr.life<=0) return false;
     if(wHit(pr.x,pr.y,pr.size)){
       if(pr.bounce>0){ pr.vx*=-1; pr.vy*=-1; pr.bounce--; }
@@ -175,6 +337,7 @@ function hostUpdate(){
   gs.decoys = gs.decoys.filter(dc=>{ dc.life--; return dc.life>0; });
   gs.parts  = gs.parts.filter(p=>{ p.x+=p.vx; p.y+=p.vy; p.vx*=.92; p.vy*=.92; p.life--; return p.life>0; });
   gs.projs.forEach(pr=>{ if(pr.trail) pr.trail=pr.trail.filter(t=>{ t.l--; return t.l>0; }); });
+  gs.walls  = gs.walls.filter(w=>{ if(!w.temp) return true; w.life--; return w.life>0; });
 
   const aA = ps.filter(p=>p.team==='A'&&p.alive).length;
   const bA = ps.filter(p=>p.team==='B'&&p.alive).length;
@@ -210,6 +373,8 @@ function doMove(p){
 function doShoot(p){
   const k = p._k||{};
   if(!k[' ']&&!k['Enter']) return;
+  // Block shooting while MY player has an ability equipped
+  if(p.pid===myId && equippedAbility) return;
   if(p.reloading>0||p.shootCd>0) return;
   if(p.ammo<=0){ if(p.reloading<=0) p.reloading=p.reloadMax||120; return; }
   p.ammo--;
@@ -229,9 +394,10 @@ function doShoot(p){
 
 function doTick(p){
   ['Q','E','R'].forEach(k=>{ if(p.cooldowns[k]>0) p.cooldowns[k]--; });
-  if(p.shootCd>0)       p.shootCd--;
-  if(p.effects.phasing>0) p.effects.phasing--;
-  if(p.effects.frozen>0)  p.effects.frozen--;
+  if(p.shootCd>0)        p.shootCd--;
+  if(p.effects.phasing>0)  p.effects.phasing--;
+  if(p.effects.frozen>0)   p.effects.frozen--;
+  if(p.effects.flashed>0)  p.effects.flashed--;
   if(p.reloading>0){ p.reloading--; if(p.reloading===0) p.ammo=p.maxAmmo; }
   if(p.boostTimer>0){
     p.boostTimer--;
@@ -248,42 +414,70 @@ function doAbility(p,slot){
 }
 
 // ── Abilities ────────────────────────────────────
-function abilShadowDash(p){
-  burst(p.x,p.y,'#e63946',14); p.effects.phasing=55;
-  const a=p.aimAngle||0, totalDist=140, steps=20, step=totalDist/steps;
-  let tx=p.x,ty=p.y;
-  for(let i=0;i<steps;i++){
-    const nx=tx+Math.cos(a)*step, ny=ty+Math.sin(a)*step;
-    if(wHit(cl(nx,30,gs.W-30),cl(ny,20,gs.H-20),p.size-2)) break;
-    tx=cl(nx,30,gs.W-30); ty=cl(ny,20,gs.H-20);
-  }
-  p.x=tx; p.y=ty; burst(p.x,p.y,'#e63946',14);
+
+// REYNA
+function abilFlash(p){
+  const a = p.aimAngle||0;
+  const maxRange = 350;
+  const dist = Math.min(p._k?._aimDist||200, maxRange);
+  const travelFrames = 12; // always exactly 200ms at 60fps
+  const spd = dist / travelFrames;
+  gs.projs.push({
+    owner: p.pid,
+    x: p.x+Math.cos(a)*(p.size+4),
+    y: p.y+Math.sin(a)*(p.size+4),
+    vx: Math.cos(a)*spd,
+    vy: Math.sin(a)*spd,
+    size: 8, dmg: 0, color: '#9b45d6',
+    life: travelFrames,
+    bounce: 0, trail: [],
+    flash: true
+  });
+  burst(p.x,p.y,'#9b45d6',8);
 }
-function abilPhantasm(p){
+function abilSmoke(p){
+  const maxRange=300;
+  const dist=Math.min(p._k?._aimDist||150, maxRange);
   const a=p.aimAngle||0;
-  gs.decoys.push({x:p.x+Math.cos(a)*70, y:p.y+Math.sin(a)*70, life:220, color:p.color, emoji:p.emoji, owner:p.pid, size:18});
+  const sx=p.x+Math.cos(a)*dist, sy=p.y+Math.sin(a)*dist;
+  gs.zones.push({x:sx,y:sy,r:75,life:360,maxLife:360,color:'rgba(120,60,180,0.55)',border:'#9b45d6',owner:p.pid,smoke:true,shadowR:75});
+  burst(sx,sy,'#9b45d6',18);
 }
-function abilSoulDrain(p){
-  const en=Object.values(gs.players).filter(e=>e.team!==p.team&&e.alive); if(!en.length)return;
-  const nr=en.reduce((a,b)=>d(p.x,p.y,a.x,a.y)<d(p.x,p.y,b.x,b.y)?a:b);
-  if(d(p.x,p.y,nr.x,nr.y)<160){ dmg(nr,22,p.pid); p.hp=Math.min(p.maxHp,p.hp+11); burst(nr.x,nr.y,'#e63946',14); }
+function abilDevour(p){
+  p.hp=Math.min(p.maxHp,p.hp+45);
+  burst(p.x,p.y,'#9b45d6',18); burst(p.x,p.y,'#c88aff',10);
 }
-function abilGravPull(p){
-  const en=Object.values(gs.players).filter(e=>e.team!==p.team&&e.alive); if(!en.length)return;
-  const nr=en.reduce((a,b)=>d(p.x,p.y,a.x,a.y)<d(p.x,p.y,b.x,b.y)?a:b);
-  const a=Math.atan2(p.y-nr.y,p.x-nr.x);
-  nr.x=cl(nr.x+Math.cos(a)*90,30,gs.W-30); nr.y=cl(nr.y+Math.sin(a)*90,20,gs.H-20);
-  burst(nr.x,nr.y,'#7b00ff',16);
+
+// SAGE
+function abilHeal(p){
+  p.hp=Math.min(p.maxHp,p.hp+40);
+  burst(p.x,p.y,'#4fc3a1',18);
+  const allies=Object.values(gs.players).filter(a=>a.team===p.team&&a.alive&&a.pid!==p.pid);
+  if(allies.length){
+    const nr=allies.reduce((a,b)=>d(p.x,p.y,a.x,a.y)<d(p.x,p.y,b.x,b.y)?a:b);
+    nr.hp=Math.min(nr.maxHp,nr.hp+40); burst(nr.x,nr.y,'#4fc3a1',12);
+  }
 }
-function abilWarpField(p){
-  gs.zones.push({x:p.x,y:p.y,r:90,life:300,maxLife:300,color:'rgba(123,0,255,.1)',border:'#7b00ff',owner:p.pid,warp:true});
-  burst(p.x,p.y,'#7b00ff',18);
+function abilBarrier(p){
+  const maxRange=250;
+  const dist=Math.min(p._k?._aimDist||110, maxRange);
+  const a=p.aimAngle||0;
+  const wx=p.x+Math.cos(a)*dist, wy=p.y+Math.sin(a)*dist;
+  const isH=Math.abs(Math.cos(a))<0.7;
+  const bw=isH?90:12, bh=isH?12:90;
+  // Wall is added to gs.walls so it auto-casts shadows via drawFog
+  gs.walls.push({x:wx-bw/2,y:wy-bh/2,w:bw,h:bh,temp:true,life:480});
+  gs.zones.push({x:wx,y:wy,r:50,life:480,maxLife:480,color:'rgba(0,255,136,0.12)',border:'#00ff88',owner:p.pid});
+  burst(wx,wy,'#00ff88',22);
 }
-function abilBlackHole(p){
-  const a=p.aimAngle||0, bx=p.x+Math.cos(a)*120, by=p.y+Math.sin(a)*120;
-  gs.zones.push({x:bx,y:by,r:130,life:180,maxLife:180,color:'rgba(40,0,80,.22)',border:'#7b00ff',owner:p.pid,pull:2.5});
-  burst(bx,by,'#7b00ff',25);
+function abilSlowField(p){
+  const a=p.aimAngle||0, dist=150;
+  const sx=p.x+Math.cos(a)*dist, sy=p.y+Math.sin(a)*dist;
+  gs.zones.push({x:sx,y:sy,r:80,life:360,maxLife:360,color:'rgba(0,180,255,0.18)',border:'#00d4ff',owner:p.pid,slow:true});
+  burst(sx,sy,'#00d4ff',18);
 }
+
+// SURGE
 function abilChainBolt(p){
   const a=p.aimAngle||0;
   gs.projs.push({owner:p.pid,x:p.x+Math.cos(a)*p.size,y:p.y+Math.sin(a)*p.size,vx:Math.cos(a)*10,vy:Math.sin(a)*10,size:6,dmg:20,color:'#00d4ff',life:130,bounce:3,trail:[]});
@@ -304,36 +498,71 @@ function dmg(p,v,kpid){
 }
 
 // ── Tester mode ──────────────────────────────────
-const TESTER_PWD = 'Shivam';
 let testerMode   = false;
+let testerP1Char = 0;
+let testerP2Char = 1;
 
 function goTester(){
-  showScreen('sTester');
-  document.getElementById('tpwd').value='';
-  document.getElementById('tpwderr').textContent='';
+  testerMode = true;
+  myTeam = 'A';
+  myName = 'TESTER';
+  try {
+    showScreen('sSelect');
+    const c = document.getElementById('scards');
+    c.innerHTML = '';
+    CHARS.forEach((ch, i)=>{
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
+        <div class="cem">${ch.emoji}</div>
+        <div class="cnm" style="color:${ch.color}">${ch.name}</div>
+        <div class="crl">${ch.role}</div>
+        <div class="cds">${ch.desc}</div>`;
+      card.style.cursor='pointer';
+      card.addEventListener('click', ()=>{
+        testerP1Char = i;
+        console.log('Card clicked, char:', ch.name, 'index:', i);
+        try { startTester(); } catch(e){ alert('startTester error: '+e.message+'\n'+e.stack); }
+      });
+      c.appendChild(card);
+    });
+    document.getElementById('ssub').textContent = '🧪 TESTER — PICK YOUR AGENT';
+    document.getElementById('swait').textContent = 'Click an agent to start';
+    console.log('goTester done, cards:', c.children.length);
+  } catch(e){ alert('goTester error: '+e.message+'\n'+e.stack); }
 }
 
 function startTester(){
-  if(document.getElementById('tpwd').value !== TESTER_PWD){
-    document.getElementById('tpwderr').textContent='✗ WRONG PASSWORD'; return;
-  }
   testerMode=true; myTeam='A'; myName='P1';
-  const W=window.innerWidth, H=window.innerHeight-100;
+  gamePaused=false;
+  if(raf){ cancelAnimationFrame(raf); raf=null; }
+
+  const SW=window.innerWidth, SH=window.innerHeight-100;
+  const W=SW*MAP_SCALE, H=SH*MAP_SCALE;
   const p2id='tester_p2', players={};
-  players[myId]  = mkP(myId, 'P1', W*0.15, H/2, CHARS[0], 'A', true);
-  players[p2id]  = mkP(p2id, 'P2', W*0.85, H/2, CHARS[2], 'B', false);
-  const state={players,walls:mkWalls(W,H),projs:[],parts:[],zones:[],decoys:[],W,H,tick:0,ended:false,score:[0,0],round:1};
+  players[myId] = mkP(myId, 'P1', W*0.87, H*0.22, CHARS[testerP1Char], 'A', true);
+  players[p2id] = mkP(p2id, 'P2', W*0.87, H*0.78, CHARS[testerP2Char], 'B', false);
+  const state={players,walls:mkWalls(W,H),projs:[],parts:[],zones:[],decoys:[],W,H,SW,SH,tick:0,ended:false,score:[0,0],round:1};
   isHost=true;
-  lobby={[myId]:{name:'P1',team:'A',charIdx:0},[p2id]:{name:'P2',team:'B',charIdx:2}};
-  showGame(); gs=clone(state); fixRefs(); rsz(gs.W,gs.H); setupNtag(); buildHUD();
-  if(raf)cancelAnimationFrame(raf); raf=requestAnimationFrame(testerTick);
+  lobby={
+    [myId]:{name:'P1',team:'A',charIdx:testerP1Char},
+    [p2id]:{name:'P2',team:'B',charIdx:testerP2Char}
+  };
+  gs=clone(state);
+  fixRefs();
+  rsz(gs.W, gs.H);
+  showGame();
+  setupNtag();
+  buildHUD();
+  raf=requestAnimationFrame(testerTick);
 }
 
 function testerTick(){
-  const p1=gs.players[myId], p2=gs.players['tester_p2'];
+  const p1=gs.players[myId];
+  const p2=gs.players['tester_p2'];
   if(p1) p1._k=buildServerKeys();
-  if(p2) p2._k=buildServerKeysFor(KB2);
-  if(!gs.ended) hostUpdate();
+  if(p2) p2._k={};
+  if(!gs.ended && !gamePaused) hostUpdate();
   drawFrame();
   raf=requestAnimationFrame(testerTick);
 }

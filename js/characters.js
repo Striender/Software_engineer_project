@@ -6,23 +6,25 @@
 
 const CHARS = [
   {
-    id:'ghost', name:'GHOST', role:'DUELIST', emoji:'👻', color:'#e63946',
-    desc:'Spectral assassin. Phases through walls, drops decoys.',
-    hp:90, speed:3.8, ammo:40, reloadF:120,
+    id:'reyna', name:'REYNA', role:'DUELIST', emoji:'👁', color:'#9b45d6',
+    // Valorant Reyna — deep violet purple
+    desc:'Aggressive duelist. Blinds enemies, smokes cover, heals on kills.',
+    hp:100, speed:3.6, ammo:40, reloadF:120,
     abilities:[
-      {key:'Q', name:'Shadow Dash', emoji:'🌑', desc:'Phase-dash forward',        cd:8,  fn:'abilShadowDash'},
-      {key:'E', name:'Phantasm',    emoji:'👁',  desc:'Drop a decoy clone',        cd:10, fn:'abilPhantasm'},
-      {key:'R', name:'Soul Drain',  emoji:'💀', desc:'Drain HP from nearest enemy',cd:15, fn:'abilSoulDrain'},
+      {key:'Q', name:'Flash',  emoji:'🔆', desc:'Blind all enemies in cone',     cd:10, fn:'abilFlash'},
+      {key:'E', name:'Smoke',  emoji:'💨', desc:'Deploy smoke cloud at cursor',  cd:12, fn:'abilSmoke'},
+      {key:'R', name:'Devour', emoji:'💉', desc:'Heal HP instantly',             cd:14, fn:'abilDevour'},
     ]
   },
   {
-    id:'nova', name:'NOVA', role:'CONTROLLER', emoji:'🌀', color:'#7b00ff',
-    desc:'Gravity manipulator. Pulls enemies, warps controls.',
-    hp:115, speed:2.9, ammo:40, reloadF:120,
+    id:'sage', name:'SAGE', role:'SENTINEL', emoji:'🌿', color:'#4fc3a1',
+    // Valorant Sage — teal/seafoam green
+    desc:'Support sentinel. Heals allies, builds walls, slows enemies.',
+    hp:120, speed:2.8, ammo:40, reloadF:120,
     abilities:[
-      {key:'Q', name:'Grav Pull',  emoji:'🔮', desc:'Yank nearest enemy toward you',     cd:7,  fn:'abilGravPull'},
-      {key:'E', name:'Warp Field', emoji:'🌀', desc:'Zone reversing controls',             cd:9,  fn:'abilWarpField'},
-      {key:'R', name:'Black Hole', emoji:'⚫', desc:'Gravity vortex sucks enemies in',    cd:16, fn:'abilBlackHole'},
+      {key:'Q', name:'Heal',       emoji:'💚', desc:'Restore HP to yourself',           cd:12, fn:'abilHeal'},
+      {key:'E', name:'Barrier',    emoji:'🧱', desc:'Erect a solid wall at cursor',     cd:16, fn:'abilBarrier'},
+      {key:'R', name:'Slow Field', emoji:'❄️',  desc:'Deploy a slowing zone at cursor',  cd:14, fn:'abilSlowField'},
     ]
   },
   {
