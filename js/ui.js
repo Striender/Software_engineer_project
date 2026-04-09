@@ -165,3 +165,105 @@ function setupNtag() {
   n.style.borderColor = myTeam === 'A' ? '#e63946' : '#00d4ff';
   n.style.color = myTeam === 'A' ? '#e63946' : '#00d4ff';
 }
+
+
+// ── HUD ──────────────────────────────────────────
+function buildHUD() {
+  if (!gs) return;
+  const me = gs.players[myId]; if (!me) return;
+  const myTmP = Object.values(gs.players).filter(p => p.team === myTeam);
+  const enTeam = myTeam === 'A' ? 'B' : 'A';
+  const enPlayers = Object.values(gs.players).filter(p => p.team === enTeam);
+  const myFc = myTeam === 'A' ? 'fa' : 'fb';
+  const enFc = myTeam === 'A' ? 'fb' : 'fa';
+  renderMyHUD(myTeam === 'A' ? 'hudA' : 'hudB', me, myFc);
+  renderEnemyHUD(myTeam === 'A' ? 'hudB' : 'hudA', enPlayers, enFc);
+  document.getElementById('hscore').textContent = `${score[0]}·${score[1]}`;
+  document.getElementById('hround').textContent = `ROUND ${roundN}`;
+}
+
+function renderMyHUD(id, p, fc) {
+  const el = document.getElementById(id);
+  const col = fc === 'fa' ? '#e63946' : '#00d4ff';
+  el.innerHTML = `
+    <div class="hems">${p.emoji}</div>
+    <div class="hinfo">
+      <div class="htn" style="color:${col}">${p.name} <span style="font-size:7px;color:#555">YOU · TEAM ${p.team}</span></div>
+      <div class="hhps"><div class="hpbar" id="hpb_${p.pid}"><div class="hpfill ${fc}" style="width:100%"></div></div></div>
+      <div class="ammo-row" id="ammorow_${p.pid}">
+        <div class="ammo-dots" id="ammo_${p.pid}"></div>
+        <div class="reload-bar-wrap" id="relbw_${p.pid}" style="display:none">
+          <span class="reload-icon">↺</span>
+          <div class="reload-track"><div class="reload-fill" id="relf_${p.pid}" style="width:0%"></div></div>
+          <span class="reload-txt">RELOADING</span>
+        </div>
+      </div>
+      <div class="habs" id="abs_${p.pid}">
+        ${(p.abilities || []).map((a, i) => `
+          <div class="habi rdy" id="ab_${p.pid}_${i}" title="${a.name}">
+            <span style="font-size:20px">${a.emoji}</span>
+            <span class="habi-label">${KB['ab' + (i + 1)].toUpperCase()}</span>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+function renderEnemyHUD(id, players, fc) {
+  const el = document.getElementById(id);
+  const col = fc === 'fa' ? '#e63946' : '#00d4ff';
+  const team = players[0]?.team || '?';
+  el.className = 'hteam r';
+  el.innerHTML = `
+    <div class="hems">${players.map(p => `<span title="${p.name}">${p.emoji}</span>`).join('')}</div>
+    <div class="hinfo r">
+      <div class="htn" style="color:${col}">TEAM ${team} <span style="font-size:7px;color:#555">ENEMIES</span></div>
+      <div class="hhps">${players.map(p => `<div class="hpbar" id="hpb_${p.pid}"><div class="hpfill ${fc}" style="width:100%"></div></div>`).join('')}</div>
+    </div>`;
+}
+
+function updateHUD() {
+  if (!gs) return;
+  const me = gs.players[myId];
+  Object.values(gs.players).forEach(p => {
+    const hb = document.getElementById(`hpb_${p.pid}`);
+    if (hb) { const f = hb.querySelector('.hpfill'); if (f) f.style.width = (p.hp / p.maxHp * 100) + '%'; }
+  });
+  if (!me) return;
+  const p = me;
+  const ammoel = document.getElementById(`ammo_${p.pid}`);
+  const relbw = document.getElementById(`relbw_${p.pid}`);
+  const relf = document.getElementById(`relf_${p.pid}`);
+  if (p.reloading > 0) {
+    if (ammoel) ammoel.style.display = 'none';
+    if (relbw) relbw.style.display = 'flex';
+    const pct = ((p.reloadMax || 120) - p.reloading) / (p.reloadMax || 120) * 100;
+    if (relf) relf.style.width = pct + '%';
+  } else {
+    if (relbw) relbw.style.display = 'none';
+    if (ammoel) {
+      ammoel.style.display = 'flex';
+      let html = '';
+      for (let i = 0; i < p.maxAmmo; i++) {
+        html += (i < p.ammo)
+          ? `<span class="adot" style="background:${p.color};box-shadow:0 0 3px ${p.color}88"></span>`
+          : `<span class="adot spent"></span>`;
+      }
+      ammoel.innerHTML = html;
+    }
+  }
+  (p.abilities || []).forEach((a, i) => {
+    const el = document.getElementById(`ab_${p.pid}_${i}`); if (!el) return;
+    const cd = p.cooldowns[a.key];
+    const isEquipped = equippedAbility === a.key;
+    if (cd > 0) {
+      el.classList.remove('rdy'); el.style.outline = ''; el.style.boxShadow = '';
+      el.innerHTML = `<span class="habi-cd">${Math.ceil(cd / 60)}s</span>`;
+    } else {
+      el.classList.add('rdy');
+      el.style.outline = isEquipped ? `2px solid ${p.color}` : '';
+      el.style.boxShadow = isEquipped ? `0 0 14px ${p.color}` : '';
+      el.innerHTML = `<span style="font-size:20px">${a.emoji}</span><span class="habi-label">${KB['ab' + (i + 1)].toUpperCase()}</span>`;
+    }
+  });
+  document.getElementById('hscore').textContent = `${gs.score[0]}·${gs.score[1]}`;
+}
