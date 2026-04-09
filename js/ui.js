@@ -401,3 +401,359 @@ function drawFrame() {
   drawMinimap(W, H);
   updateHUD();
 }
+
+// Per-ability preview rendering
+function drawAbilityPreview(p, slot, W, H) {
+  const ch = CHARS.find(c => c.id === p.charId); if (!ch) return;
+  const ab = ch.abilities.find(a => a.key === slot); if (!ab) return;
+  const a = p.aimAngle || 0;
+
+  // Convert player world pos to screen pos
+  const ps = w2s(p.x, p.y);
+  const mw = mouseWorld();
+  const maxRange = 350;
+  const dist = Math.min(Math.hypot(mw.x - p.x, mw.y - p.y), maxRange);
+
+  // Target position in screen space
+  const tsx = ps.x + Math.cos(a) * dist;
+  const tsy = ps.y + Math.sin(a) * dist;
+
+  gctx.save();
+
+  // Max range circle (screen space)
+  gctx.beginPath(); gctx.arc(ps.x, ps.y, maxRange, 0, Math.PI * 2);
+  gctx.strokeStyle = p.color + '44'; gctx.lineWidth = 1;
+  gctx.setLineDash([6, 6]); gctx.stroke(); gctx.setLineDash([]);
+
+  // Per-ability specific preview (all in screen space)
+  if (p.charId === 'reyna') {
+    const rc = '155,69,214';
+    if (slot === 'Q') {
+      gctx.beginPath(); gctx.arc(tsx, tsy, 10, 0, Math.PI * 2);
+      gctx.fillStyle = `rgba(${rc},0.4)`; gctx.shadowColor = '#9b45d6'; gctx.shadowBlur = 14; gctx.fill();
+      gctx.beginPath(); gctx.moveTo(ps.x, ps.y); gctx.lineTo(tsx, tsy);
+      gctx.strokeStyle = `rgba(${rc},0.25)`; gctx.lineWidth = 1.5; gctx.setLineDash([4, 4]); gctx.stroke(); gctx.setLineDash([]);
+    } else if (slot === 'E') {
+      gctx.beginPath(); gctx.arc(tsx, tsy, 55, 0, Math.PI * 2);
+      gctx.fillStyle = `rgba(${rc},0.12)`; gctx.fill();
+      gctx.strokeStyle = `rgba(${rc},0.5)`; gctx.lineWidth = 1.5; gctx.stroke();
+      gctx.beginPath(); gctx.arc(tsx, tsy, 6, 0, Math.PI * 2);
+      gctx.fillStyle = `rgba(${rc},0.7)`; gctx.fill();
+    } else if (slot === 'R') {
+      gctx.beginPath(); gctx.arc(ps.x, ps.y, 36, 0, Math.PI * 2);
+      gctx.strokeStyle = `rgba(${rc},0.7)`; gctx.lineWidth = 2; gctx.stroke();
+      gctx.beginPath(); gctx.arc(ps.x, ps.y, 24, 0, Math.PI * 2);
+      gctx.fillStyle = `rgba(${rc},0.15)`; gctx.fill();
+    }
+  } else if (p.charId === 'sage') {
+    const sc = '79,195,161';
+    if (slot === 'Q') {
+      gctx.beginPath(); gctx.arc(ps.x, ps.y, 36, 0, Math.PI * 2);
+      gctx.strokeStyle = `rgba(${sc},0.7)`; gctx.lineWidth = 2; gctx.stroke();
+      gctx.beginPath(); gctx.arc(ps.x, ps.y, 24, 0, Math.PI * 2);
+      gctx.fillStyle = `rgba(${sc},0.12)`; gctx.fill();
+    } else if (slot === 'E') {
+      const isH = Math.abs(Math.cos(a)) < 0.7;
+      const bw = isH ? 90 : 12, bh = isH ? 12 : 90;
+      gctx.fillStyle = `rgba(${sc},0.18)`; gctx.fillRect(tsx - bw / 2, tsy - bh / 2, bw, bh);
+      gctx.strokeStyle = `rgba(${sc},0.7)`; gctx.lineWidth = 2; gctx.strokeRect(tsx - bw / 2, tsy - bh / 2, bw, bh);
+      gctx.beginPath(); gctx.arc(tsx, tsy, 6, 0, Math.PI * 2);
+      gctx.fillStyle = `rgba(${sc},0.7)`; gctx.fill();
+    } else if (slot === 'R') {
+      gctx.beginPath(); gctx.arc(tsx, tsy, 80, 0, Math.PI * 2);
+      gctx.fillStyle = `rgba(${sc},0.1)`; gctx.fill();
+      gctx.strokeStyle = `rgba(${sc},0.6)`; gctx.lineWidth = 1.5; gctx.stroke();
+      gctx.beginPath(); gctx.arc(tsx, tsy, 6, 0, Math.PI * 2);
+      gctx.fillStyle = `rgba(${sc},0.7)`; gctx.fill();
+    }
+  } else if (p.charId === 'surge') {
+    if (slot === 'Q') {
+      gctx.beginPath(); gctx.moveTo(ps.x, ps.y); gctx.lineTo(tsx, tsy);
+      gctx.strokeStyle = 'rgba(0,212,255,0.4)'; gctx.lineWidth = 2; gctx.stroke();
+      gctx.beginPath(); gctx.arc(tsx, tsy, 8, 0, Math.PI * 2);
+      gctx.fillStyle = 'rgba(0,212,255,0.5)'; gctx.shadowColor = '#00d4ff'; gctx.shadowBlur = 10; gctx.fill();
+    } else if (slot === 'E') {
+      gctx.beginPath(); gctx.arc(ps.x, ps.y, p.size + 14, 0, Math.PI * 2);
+      gctx.strokeStyle = 'rgba(0,212,255,0.7)'; gctx.lineWidth = 2.5;
+      gctx.setLineDash([5, 3]); gctx.stroke(); gctx.setLineDash([]);
+    } else if (slot === 'R') {
+      gctx.beginPath(); gctx.arc(ps.x, ps.y, 40, 0, Math.PI * 2);
+      gctx.strokeStyle = 'rgba(0,212,255,0.6)'; gctx.lineWidth = 2; gctx.stroke();
+      gctx.beginPath(); gctx.arc(ps.x, ps.y, 28, 0, Math.PI * 2);
+      gctx.fillStyle = 'rgba(0,212,255,0.08)'; gctx.fill();
+    }
+  }
+
+  // Ability name label
+  gctx.shadowBlur = 0;
+  gctx.font = 'bold 11px "Share Tech Mono",monospace';
+  gctx.textAlign = 'center';
+  gctx.fillStyle = p.color;
+  gctx.fillText(`[${slot}] ${ab.name} — LMB to use  RMB/ESC to cancel`, W / 2, H - 110);
+
+  gctx.restore();
+}
+
+function drawPlayer(p) {
+  const x = p.x, y = p.y, r = p.size, angle = p.aimAngle || 0;
+  if (p.effects.phasing > 0 && Math.floor(gs.tick / 5) % 2 === 0) return;
+  gctx.save();
+  // Team ring
+  gctx.beginPath(); gctx.arc(x, y, r + 9, 0, Math.PI * 2);
+  gctx.strokeStyle = p.team === 'A' ? '#e63946' : '#00d4ff'; gctx.lineWidth = 1; gctx.globalAlpha = 0.25;
+  gctx.shadowColor = gctx.strokeStyle; gctx.shadowBlur = 18; gctx.stroke(); gctx.globalAlpha = 1;
+  // Body
+  gctx.beginPath(); gctx.arc(x, y, r, 0, Math.PI * 2);
+  gctx.fillStyle = p.color + '22'; gctx.fill();
+  gctx.strokeStyle = p.color; gctx.lineWidth = 2.5; gctx.shadowColor = p.color; gctx.shadowBlur = 14; gctx.stroke(); gctx.shadowBlur = 0;
+  // Shield ring
+  if (p.shield) {
+    gctx.beginPath(); gctx.arc(x, y, r + 11, 0, Math.PI * 2);
+    gctx.strokeStyle = '#00d4ff'; gctx.lineWidth = 2.5; gctx.setLineDash([5, 3]);
+    gctx.shadowColor = '#00d4ff'; gctx.shadowBlur = 12; gctx.stroke(); gctx.setLineDash([]); gctx.shadowBlur = 0;
+  }
+  // Boost pulse
+  if (p.boosted) {
+    gctx.beginPath(); gctx.arc(x, y, r + 16 + Math.sin((gs.tick || 0) * 0.2) * 3, 0, Math.PI * 2);
+    gctx.strokeStyle = '#00d4ff44'; gctx.lineWidth = 1; gctx.stroke();
+  }
+  // Emoji + gun barrel (rotated to aim angle)
+  gctx.save(); gctx.translate(x, y); gctx.rotate(angle);
+  gctx.font = `${r + 2}px serif`; gctx.textAlign = 'center'; gctx.textBaseline = 'middle';
+  gctx.shadowBlur = 0; gctx.fillStyle = '#fff'; gctx.fillText(p.emoji, 0, 0);
+  gctx.strokeStyle = p.color; gctx.lineWidth = 3; gctx.shadowColor = p.color; gctx.shadowBlur = 8;
+  gctx.beginPath(); gctx.moveTo(r - 2, 0); gctx.lineTo(r + 10, 0); gctx.stroke(); gctx.shadowBlur = 0;
+  gctx.fillStyle = p.color; gctx.beginPath(); gctx.arc(r + 10, 0, 2.5, 0, Math.PI * 2); gctx.fill();
+  gctx.restore();
+  // Aim line for local player
+  if (p.pid === myId) {
+    gctx.save(); gctx.strokeStyle = p.color + '66'; gctx.lineWidth = 1; gctx.setLineDash([4, 6]);
+    gctx.beginPath();
+    gctx.moveTo(x + Math.cos(angle) * (r + 12), y + Math.sin(angle) * (r + 12));
+    gctx.lineTo(x + Math.cos(angle) * (r + 50), y + Math.sin(angle) * (r + 50));
+    gctx.stroke(); gctx.setLineDash([]); gctx.restore();
+  }
+  // YOU label
+  if (p.pid === myId) {
+    gctx.font = 'bold 8px "Share Tech Mono",monospace'; gctx.textAlign = 'center';
+    gctx.fillStyle = '#ffd700'; gctx.shadowColor = '#ffd700'; gctx.shadowBlur = 6;
+    gctx.fillText('YOU', x, y - r - 17); gctx.shadowBlur = 0;
+  }
+  // Name
+  gctx.font = 'bold 8px "Share Tech Mono",monospace'; gctx.textAlign = 'center';
+  gctx.fillStyle = p.color; gctx.shadowColor = p.color; gctx.shadowBlur = 5;
+  gctx.fillText(p.name, x, y - r - 7); gctx.shadowBlur = 0;
+  // HP bar
+  const bw = 44, bh = 3;
+  gctx.fillStyle = '#0a0a0a'; gctx.fillRect(x - bw / 2, y - r - 20, bw, bh);
+  const pct = p.hp / p.maxHp;
+  gctx.fillStyle = pct > .5 ? p.color : pct > .25 ? '#ffd700' : '#ff0000';
+  gctx.shadowColor = gctx.fillStyle; gctx.shadowBlur = 5;
+  gctx.fillRect(x - bw / 2, y - r - 20, bw * pct, bh); gctx.shadowBlur = 0;
+  gctx.restore();
+}
+
+// ── Fog of war — raycasting wall shadows only ────
+const FOG_R = 3000;
+const CONE_ANGLE = Math.PI * (120 / 180); // kept for ability preview reference only
+
+function drawFog(W, H) {
+  const me = gs && gs.players[myId];
+  if (!me || !me.alive) return;
+
+  const px = me.x, py = me.y;
+  const far = gs.W + gs.H;
+
+  gctx.save();
+  gctx.fillStyle = '#000';
+
+  const SW = gc.width, SH = gc.height;
+
+  // ── Wall shadows ──
+  for (let wi = 4; wi < gs.walls.length; wi++) {
+    const w = gs.walls[wi];
+    const wx1 = w.x, wy1 = w.y, wx2 = w.x + w.w, wy2 = w.y + w.h;
+    if (px >= wx1 && px <= wx2 && py >= wy1 && py <= wy2) continue;
+    if (wx2 - camX < -SW || wx1 - camX > SW * 2 || wy2 - camY < -SH || wy1 - camY > SH * 2) continue;
+
+    const corners = [[wx1, wy1], [wx2, wy1], [wx2, wy2], [wx1, wy2]];
+    const angs = corners.map(([cx, cy]) => Math.atan2(cy - py, cx - px));
+    let lo = angs[0], hi = angs[0], loI = 0, hiI = 0;
+    for (let i = 1; i < 4; i++) {
+      if (angs[i] < lo) { lo = angs[i]; loI = i; }
+      if (angs[i] > hi) { hi = angs[i]; hiI = i; }
+    }
+    if (hi - lo > Math.PI) {
+      const sh = angs.map(a => a < 0 ? a + Math.PI * 2 : a);
+      lo = sh[0]; hi = sh[0]; loI = 0; hiI = 0;
+      for (let i = 1; i < 4; i++) {
+        if (sh[i] < lo) { lo = sh[i]; loI = i; }
+        if (sh[i] > hi) { hi = sh[i]; hiI = i; }
+      }
+    }
+    if (hi - lo > Math.PI * 1.5) continue;
+    const [lx, ly] = corners[loI], [rx, ry] = corners[hiI];
+    const la = Math.atan2(ly - py, lx - px), ra = Math.atan2(ry - py, rx - px);
+    gctx.beginPath();
+    gctx.moveTo(lx, ly);
+    gctx.lineTo(lx + Math.cos(la) * far, ly + Math.sin(la) * far);
+    gctx.lineTo(rx + Math.cos(ra) * far, ry + Math.sin(ra) * far);
+    gctx.lineTo(rx, ry);
+    gctx.closePath();
+    gctx.fill();
+  }
+
+  // ── Smoke shadows — rectangle starts at back outer edge ──
+  gs.zones.filter(z => z.shadowR).forEach(z => {
+    if (d(px, py, z.x, z.y) < z.r) return;
+    const SW = gc.width, SH = gc.height;
+    if (z.x + z.r - camX < -SW || z.x - z.r - camX > SW * 2) return;
+    if (z.y + z.r - camY < -SH || z.y - z.r - camY > SH * 2) return;
+
+    const ang = Math.atan2(z.y - py, z.x - px);
+    const perp = ang + Math.PI / 2;
+
+    // Shadow rect starts at back edge of circle
+    const bx = z.x + Math.cos(ang) * z.r;
+    const by = z.y + Math.sin(ang) * z.r;
+
+    // Width = diameter of smoke
+    const tlx = bx + Math.cos(perp) * z.r, tly = by + Math.sin(perp) * z.r;
+    const trx = bx - Math.cos(perp) * z.r, try_ = by - Math.sin(perp) * z.r;
+
+    const sdx = Math.cos(ang) * far, sdy = Math.sin(ang) * far;
+
+    gctx.beginPath();
+    gctx.moveTo(tlx, tly);
+    gctx.lineTo(tlx + sdx, tly + sdy);
+    gctx.lineTo(trx + sdx, try_ + sdy);
+    gctx.lineTo(trx, try_);
+    gctx.closePath();
+    gctx.fill();
+  });
+
+  gctx.restore();
+}
+
+function isVisible(tx, ty) {
+  const me = gs && gs.players[myId];
+  if (!me) return false;
+  const dx = tx - me.x, dy = ty - me.y, steps = Math.ceil(Math.hypot(dx, dy) / 8);
+  for (let i = 1; i < steps; i++) {
+    const sx = me.x + dx * i / steps, sy = me.y + dy * i / steps;
+    for (let wi = 4; wi < gs.walls.length; wi++) {
+      const w = gs.walls[wi];
+      if (sx > w.x && sx < w.x + w.w && sy > w.y && sy < w.y + w.h) return false;
+    }
+  }
+  return true;
+}
+
+function drawMinimap(W, H) {
+  const mw = 150, mh = 112;
+  const sx = mw / gs.W, sy = mh / gs.H; // scale by MAP size
+  mmX.fillStyle = '#01010a'; mmX.fillRect(0, 0, mw, mh);
+  mmX.fillStyle = 'rgba(0,0,0,0.5)'; mmX.fillRect(0, 0, mw, mh);
+  mmX.fillStyle = '#1e2230';
+  gs.walls.slice(4).forEach(w => mmX.fillRect(w.x * sx, w.y * sy, Math.max(1, w.w * sx), Math.max(1, w.h * sy)));
+  // Draw viewport indicator
+  const SW = gc.width, SH = gc.height;
+  mmX.strokeStyle = 'rgba(255,255,255,0.2)'; mmX.lineWidth = 1;
+  mmX.strokeRect(camX * sx, camY * sy, SW * sx, SH * sy);
+  // Draw players
+  Object.values(gs.players).forEach(p => {
+    const isAlly = p.team === myTeam;
+    const visible = isAlly || isVisible(p.x, p.y);
+    if (!visible && !isAlly) return;
+    mmX.save(); mmX.globalAlpha = p.alive ? (isAlly ? 1 : 0.6) : 0.15;
+    mmX.fillStyle = p.pid === myId ? '#ffd700' : p.color;
+    mmX.beginPath(); mmX.arc(p.x * sx, p.y * sy, p.alive ? 3.5 : 2, 0, Math.PI * 2); mmX.fill(); mmX.restore();
+  });
+  mmX.strokeStyle = '#1e2230'; mmX.lineWidth = 1; mmX.strokeRect(0, 0, mw, mh);
+}
+
+// ── Round over & navigation ───────────────────────
+function showROver(winner, sc, rn) {
+  score = [...sc]; roundN = rn;
+  const ro = document.getElementById('rover'), wt = document.getElementById('rowt');
+  if (winner === 'DRAW') { wt.textContent = 'DRAW'; wt.style.color = '#ffd700'; ro.style.borderColor = '#ffd700'; }
+  else { const col = winner === 'A' ? '#e63946' : '#00d4ff'; wt.textContent = `TEAM ${winner} WINS`; wt.style.color = col; ro.style.borderColor = col; }
+  document.getElementById('rows_').textContent = `ROUND ${rn}  ·  A:${sc[0]}  B:${sc[1]}`;
+  const mo = sc[0] >= 3 || sc[1] >= 3 || rn >= MAX_ROUNDS;
+  const rob = document.getElementById('rob_');
+  if (mo) {
+    const mv = sc[0] > sc[1] ? 'A' : sc[1] > sc[0] ? 'B' : null;
+    document.getElementById('rows_').textContent = mv ? `MATCH OVER — TEAM ${mv} IS CHAMPION` : 'MATCH DRAW';
+    rob.textContent = 'BACK TO LOBBY'; rob.onclick = backToLobby;
+  } else {
+    rob.textContent = isHost ? 'NEXT ROUND' : 'WAITING FOR HOST...';
+    rob.style.opacity = isHost ? '1' : '0.4'; rob.style.cursor = isHost ? 'pointer' : 'default';
+    rob.onclick = isHost ? hostNR : null;
+  }
+  ro.style.display = 'block';
+}
+
+function hostNR() {
+  roundN++;
+  if (testerMode) {
+    const W = window.innerWidth, H = window.innerHeight - 100, p2id = 'tester_p2', players = {};
+    players[myId] = mkP(myId, 'P1', W * 0.15, H / 2, CHARS[0], 'A', true);
+    players[p2id] = mkP(p2id, 'P2', W * 0.85, H / 2, CHARS[2], 'B', false);
+    const prev = [...gs.score];
+    gs = { players, walls: mkWalls(W, H), projs: [], parts: [], zones: [], decoys: [], W, H, tick: 0, ended: false, score: prev, round: roundN };
+    fixRefs(); gamePaused = false;
+    document.getElementById('rover').style.display = 'none';
+    document.getElementById('kf').innerHTML = ''; document.getElementById('elog').innerHTML = '';
+    buildHUD(); return;
+  }
+  const ns = buildState(); ns.score = [...gs.score]; ns.round = roundN;
+  send({ type: 'NR', st: ns, rn: roundN });
+  gs = clone(ns); fixRefs(); gamePaused = false;
+  document.getElementById('rover').style.display = 'none';
+  document.getElementById('kf').innerHTML = ''; document.getElementById('elog').innerHTML = '';
+  buildHUD();
+}
+
+function backToLobby() {
+  testerMode = false; gamePaused = false;
+  gs = null; if (raf) { cancelAnimationFrame(raf); raf = null; }
+  gc.style.display = fogC.style.display = mmC.style.display = 'none';
+  document.getElementById('hud').style.display = 'none';
+  document.getElementById('ntag').style.display = 'none';
+  document.getElementById('rover').style.display = 'none';
+  document.getElementById('pauseMenu').classList.remove('on');
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('on'));
+  score = [0, 0]; roundN = 1; showScreen('sLobby');
+}
+
+// ── Pause menu ───────────────────────────────────
+
+
+function togglePause() { gamePaused ? resumeGame() : pauseGame(); }
+
+function pauseGame() {
+  gamePaused = true; keys = {};
+  document.getElementById('pauseMenu').classList.add('on');
+  if (gs) {
+    const sc = gs.score || score;
+    document.getElementById('pauseRound').textContent = `ROUND ${roundN} · A:${sc[0]}  B:${sc[1]}`;
+  }
+}
+function resumeGame() {
+  gamePaused = false;
+  document.getElementById('pauseMenu').classList.remove('on');
+  const sKeys = document.getElementById('sKeys');
+  if (sKeys.classList.contains('on')) sKeys.classList.remove('on');
+}
+function pauseGoKeys() {
+  document.getElementById('pauseMenu').classList.remove('on');
+  showScreen('sKeys'); renderKeyGrid();
+  const kb = document.getElementById('kbGrid');
+  const old = document.getElementById('kbBackRow'); if (old) old.remove();
+  const backRow = document.createElement('div');
+  backRow.id = 'kbBackRow'; backRow.style.cssText = 'grid-column:1/-1;display:flex;justify-content:center;gap:10px;margin-top:10px';
+  backRow.innerHTML = `<button class="kb-save" onclick="backToPause()">BACK TO GAME</button>`;
+  kb.parentElement.insertBefore(backRow, document.querySelector('.kb-save'));
+}
+function backToPause() { saveKeys(); pauseGame(); }
+function pauseQuit() { backToLobby(); document.getElementById('pauseMenu').classList.remove('on'); gamePaused = false; }
