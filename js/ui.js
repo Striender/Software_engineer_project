@@ -320,6 +320,82 @@ function drawFrame() {
     gctx.beginPath(); gctx.arc(p.x, p.y, p.size * a, 0, Math.PI * 2); gctx.fill(); gctx.restore();
   });
 
+  // Projectile trails + bullets
+  gs.projs.forEach(pr => {
+    (pr.trail || []).forEach(t => {
+      gctx.save(); gctx.globalAlpha = (t.l / t.ml) * 0.35; gctx.fillStyle = pr.color;
+      gctx.beginPath(); gctx.arc(t.x, t.y, pr.size * (t.l / t.ml), 0, Math.PI * 2); gctx.fill(); gctx.restore();
+    });
+    gctx.save();
+    if (pr.flash) {
+      // Flash orb — bright pulsing yellow ball
+      gctx.shadowColor = '#ffff00'; gctx.shadowBlur = 24;
+      gctx.fillStyle = '#ffffaa';
+    } else {
+      gctx.fillStyle = pr.color; gctx.shadowColor = pr.color; gctx.shadowBlur = 16;
+    }
+    gctx.beginPath(); gctx.arc(pr.x, pr.y, pr.size, 0, Math.PI * 2); gctx.fill(); gctx.restore();
+  });
+
+  // Decoys
+  gs.decoys.forEach(dc => {
+    const a = Math.min(1, dc.life / 50) * 0.45; gctx.save(); gctx.globalAlpha = a;
+    gctx.font = `${dc.size + 4}px serif`; gctx.textAlign = 'center'; gctx.textBaseline = 'middle';
+    gctx.fillText(dc.emoji, dc.x, dc.y); gctx.restore();
+  });
+
+  // Players
+  Object.values(gs.players).forEach(p => { if (p.alive) drawPlayer(p); });
+
+  // Draw fog shadows INSIDE camera transform so they're in world space
+  drawFog(W, H);
+
+  // Redraw walls ON TOP of shadows so shadows never cover walls
+  gs.walls.forEach((w, i) => {
+    if (i < 4) { gctx.fillStyle = '#020208'; gctx.fillRect(w.x, w.y, w.w, w.h); return; }
+    gctx.save();
+    gctx.fillStyle = '#0b0b1e'; gctx.fillRect(w.x, w.y, w.w, w.h);
+    gctx.strokeStyle = '#00d4ff'; gctx.lineWidth = 1.5; gctx.shadowColor = '#00d4ff'; gctx.shadowBlur = 8; gctx.strokeRect(w.x, w.y, w.w, w.h);
+    gctx.shadowBlur = 0; gctx.strokeStyle = 'rgba(0,212,255,.1)'; gctx.lineWidth = 1;
+    if (w.w > w.h) { for (let lx = w.x + 14; lx < w.x + w.w - 5; lx += 18) { gctx.beginPath(); gctx.moveTo(lx, w.y + 3); gctx.lineTo(lx, w.y + w.h - 3); gctx.stroke(); } }
+    else { for (let ly = w.y + 14; ly < w.y + w.h - 5; ly += 18) { gctx.beginPath(); gctx.moveTo(w.x + 3, ly); gctx.lineTo(w.x + w.w - 3, ly); gctx.stroke(); } }
+    gctx.restore();
+  });
+
+  // Redraw smoke zones ON TOP of shadows so circle is never blackened
+  gs.zones.filter(z => z.shadowR).forEach(z => {
+    const a = z.life / z.maxLife;
+    gctx.save(); gctx.globalAlpha = a;
+    gctx.beginPath(); gctx.arc(z.x, z.y, z.r, 0, Math.PI * 2);
+    gctx.fillStyle = z.color; gctx.fill();
+    gctx.strokeStyle = z.border; gctx.lineWidth = 2; gctx.setLineDash([8, 5]);
+    gctx.shadowColor = z.border; gctx.shadowBlur = 10; gctx.stroke();
+    gctx.setLineDash([]); gctx.restore();
+
+    // Redraw players inside this smoke so they're visible through it
+    Object.values(gs.players).forEach(p => {
+      if (p.alive && d(p.x, p.y, z.x, z.y) < z.r) drawPlayer(p);
+    });
+  });
+
+  gctx.restore(); // end camera transform — back to screen space
+
+  // Ability preview for MY equipped ability (screen space, uses world->screen conversion)
+  const _meP = gs.players[myId];
+  if (_meP && _meP.alive && equippedAbility) {
+    drawAbilityPreview(_meP, equippedAbility, W, H);
+  }
+
+  // Flash overlay — full screen, no camera needed
+  const _me = gs.players[myId];
+  if (_me && (_me.effects.flashed || 0) > 0) {
+    const intensity = _me.effects.flashed / 12;
+    gctx.save();
+    gctx.fillStyle = `rgba(155,69,214,${intensity * 0.88})`;
+    gctx.fillRect(0, 0, W, H);
+    gctx.restore();
+  }
+
   // Fog drawn last (screen space)
   // drawFog already called inside camera transform above
   drawMinimap(W, H);
