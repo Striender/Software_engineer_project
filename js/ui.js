@@ -120,3 +120,48 @@ document.addEventListener('keydown', e=>{
 });
 document.addEventListener('keyup', e=>{ keys[e.key]=false; });
 
+
+// ── Keybind screen ───────────────────────────────
+const KB_LABELS = { up: 'Move Up', down: 'Move Down', left: 'Move Left', right: 'Move Right', fire: 'Fire / Shoot', ab1: 'Ability Q', ab2: 'Ability E', ab3: 'Ability R' };
+
+function goKeys() { showScreen('sKeys'); renderKeyGrid(); }
+
+function renderKeyGrid() {
+  const grid = document.getElementById('kbGrid'); grid.innerHTML = '';
+  Object.entries(KB_LABELS).forEach(([id, label]) => {
+    const row = document.createElement('div'); row.className = 'kb-row';
+    const lbl = document.createElement('div'); lbl.className = 'kb-label'; lbl.textContent = label;
+    const btn = document.createElement('div'); btn.className = 'kb-key'; btn.id = 'kbk_' + id; btn.textContent = fmtKey(KB[id]);
+    btn.addEventListener('click', () => startListen(id));
+    row.appendChild(lbl); row.appendChild(btn); grid.appendChild(row);
+  });
+}
+
+function fmtKey(k) {
+  if (!k) return '—'; if (k === ' ') return 'SPACE';
+  if (k === 'ArrowUp') return '↑'; if (k === 'ArrowDown') return '↓';
+  if (k === 'ArrowLeft') return '←'; if (k === 'ArrowRight') return '→';
+  if (k === 'Mouse0') return 'LMB 🖱'; if (k === 'Mouse1') return 'MMB 🖱'; if (k === 'Mouse2') return 'RMB 🖱';
+  return k.toUpperCase();
+}
+
+function startListen(id) {
+  if (listeningFor) document.getElementById('kbk_' + listeningFor).classList.remove('listening');
+  listeningFor = id;
+  listeningReady = false;
+  document.getElementById('kbk_' + id).classList.add('listening');
+  document.getElementById('kbk_' + id).textContent = 'press key or click...';
+  // Double rAF: first frame lets the opening click's mouseup fire,
+  // second frame sets ready so the NEXT click is captured
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => { listeningReady = true; });
+  });
+}
+
+// ── Name tag ─────────────────────────────────────
+function setupNtag() {
+  const n = document.getElementById('ntag');
+  n.innerHTML = `${myName} · TEAM ${myTeam} <span style="font-size:8px;color:#333;letter-spacing:2px">· ESC=PAUSE</span>`;
+  n.style.borderColor = myTeam === 'A' ? '#e63946' : '#00d4ff';
+  n.style.color = myTeam === 'A' ? '#e63946' : '#00d4ff';
+}
