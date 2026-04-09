@@ -498,11 +498,17 @@ function dmg(p,v,kpid){
 }
 
 // ── Tester mode ──────────────────────────────────
+const TESTER_PWD = 'Shivam';
 let testerMode   = false;
 let testerP1Char = 0;
 let testerP2Char = 1;
 
 function goTester(){
+  const pwd = prompt('🧪 TESTER MODE — Enter password:');
+  if(pwd !== TESTER_PWD){
+    if(pwd !== null) alert('✗ Wrong password');
+    return;
+  }
   testerMode = true;
   myTeam = 'A';
   myName = 'TESTER';
