@@ -267,3 +267,61 @@ function updateHUD() {
   });
   document.getElementById('hscore').textContent = `${gs.score[0]}·${gs.score[1]}`;
 }
+
+function drawFrame() {
+  if (!gs) return;
+  const W = gc.width, H = gc.height;
+
+  updateCamera(W, H);
+
+  // 1. Gray floor across full viewport
+  gctx.fillStyle = '#b8b8c4'; gctx.fillRect(0, 0, W, H);
+
+  // 3. Grid on floor
+  gctx.save();
+  gctx.translate(-camX, -camY); // apply camera offset for world rendering
+  gctx.strokeStyle = 'rgba(80,80,100,0.3)'; gctx.lineWidth = 1;
+  // Only draw grid lines visible on screen
+  const gx0 = Math.floor(camX / 50) * 50, gy0 = Math.floor(camY / 50) * 50;
+  for (let x = gx0; x < camX + W + 50; x += 50) { gctx.beginPath(); gctx.moveTo(x, camY); gctx.lineTo(x, camY + H); gctx.stroke(); }
+  for (let y = gy0; y < camY + H + 50; y += 50) { gctx.beginPath(); gctx.moveTo(camX, y); gctx.lineTo(camX + W, y); gctx.stroke(); }
+  gctx.restore();
+
+  // 4. World rendering — apply camera offset
+  gctx.save();
+  gctx.translate(-camX, -camY);
+
+  // Zones
+  gs.zones.forEach(z => {
+    const a = z.life / z.maxLife; gctx.save(); gctx.globalAlpha = a;
+    gctx.beginPath(); gctx.arc(z.x, z.y, z.r, 0, Math.PI * 2);
+    gctx.fillStyle = z.color; gctx.fill();
+    gctx.strokeStyle = z.border; gctx.lineWidth = 2; gctx.setLineDash([8, 5]);
+    gctx.shadowColor = z.border; gctx.shadowBlur = 10; gctx.stroke();
+    gctx.setLineDash([]); gctx.restore();
+  });
+
+  // Walls
+  gs.walls.forEach((w, i) => {
+    if (i < 4) { gctx.fillStyle = '#020208'; gctx.fillRect(w.x, w.y, w.w, w.h); return; }
+    gctx.save();
+    gctx.fillStyle = '#0b0b1e'; gctx.fillRect(w.x, w.y, w.w, w.h);
+    gctx.strokeStyle = '#00d4ff'; gctx.lineWidth = 1.5; gctx.shadowColor = '#00d4ff'; gctx.shadowBlur = 8; gctx.strokeRect(w.x, w.y, w.w, w.h);
+    gctx.shadowBlur = 0; gctx.strokeStyle = 'rgba(0,212,255,.1)'; gctx.lineWidth = 1;
+    if (w.w > w.h) { for (let lx = w.x + 14; lx < w.x + w.w - 5; lx += 18) { gctx.beginPath(); gctx.moveTo(lx, w.y + 3); gctx.lineTo(lx, w.y + w.h - 3); gctx.stroke(); } }
+    else { for (let ly = w.y + 14; ly < w.y + w.h - 5; ly += 18) { gctx.beginPath(); gctx.moveTo(w.x + 3, ly); gctx.lineTo(w.x + w.w - 3, ly); gctx.stroke(); } }
+    gctx.restore();
+  });
+
+  // Particles
+  gs.parts.forEach(p => {
+    const a = p.life / p.maxLife; gctx.save(); gctx.globalAlpha = a; gctx.fillStyle = p.color;
+    gctx.shadowColor = p.color; gctx.shadowBlur = 5;
+    gctx.beginPath(); gctx.arc(p.x, p.y, p.size * a, 0, Math.PI * 2); gctx.fill(); gctx.restore();
+  });
+
+  // Fog drawn last (screen space)
+  // drawFog already called inside camera transform above
+  drawMinimap(W, H);
+  updateHUD();
+}
