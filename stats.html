@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NEON DUEL — STATS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --red:  #e63946;
+    --blue: #00d4ff;
+    --gold: #ffd700;
+    --bg:   #0a0a0f;
+    --card: #111118;
+    --border: #222230;
+    --text: #ccd6f6;
+    --dim:  #4a4f7a;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+    padding: 0 0 60px;
+  }
+
+  /* ── Header ── */
+  header {
+    background: linear-gradient(180deg, #0d0d1a 0%, var(--bg) 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 28px 32px 20px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+  }
+  header h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 22px;
+    font-weight: 900;
+    letter-spacing: 6px;
+    color: var(--gold);
+    text-shadow: 0 0 20px #ffd70066;
+  }
+  header span { color: var(--dim); font-size: 11px; letter-spacing: 2px; }
+  .back-btn {
+    margin-left: auto;
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--dim);
+    font-family: inherit;
+    font-size: 11px;
+    letter-spacing: 2px;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .back-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+  /* ── Tabs ── */
+  .tabs {
+    display: flex;
+    gap: 2px;
+    padding: 24px 32px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .tab {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--dim);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    padding: 10px 20px 12px;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+  /* ── Content ── */
+  .content { padding: 32px; max-width: 1100px; margin: 0 auto; }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ── Search bar ── */
+  .search-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 28px;
+  }
+  .search-row input {
+    flex: 1;
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 13px;
+    letter-spacing: 2px;
+    padding: 12px 16px;
+    outline: none;
+    transition: border .2s;
+  }
+  .search-row input:focus { border-color: var(--gold); }
+  .search-row button {
+    background: var(--gold);
+    border: none;
+    color: #000;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    padding: 12px 24px;
+    cursor: pointer;
+    transition: opacity .2s;
+  }
+  .search-row button:hover { opacity: .85; }
+
+  /* ── Table ── */
+  .nd-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .nd-table th {
+    color: var(--dim);
+    font-size: 10px;
+    letter-spacing: 3px;
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .nd-table td {
+    padding: 13px 14px;
+    border-bottom: 1px solid #1a1a26;
+    vertical-align: middle;
+  }
+  .nd-table tr:hover td { background: #14141f; }
+
+  .rank-num {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--dim);
+  }
+  .rank-num.gold   { color: var(--gold); }
+  .rank-num.silver { color: #aaa; }
+  .rank-num.bronze { color: #cd7f32; }
+
+  .player-name {
+    font-size: 13px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: color .15s;
+  }
+  .player-name:hover { color: var(--gold); text-decoration: underline; }
+
+  .win  { color: #4cff91; }
+  .loss { color: var(--red); }
+  .gold-text { color: var(--gold); font-weight: 700; }
+
+  .team-a { color: var(--red); }
+  .team-b { color: var(--blue); }
+
+  /* ── Kill feed ── */
+  .kf-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid #1a1a26; }
+  .kf-killer { color: var(--gold); font-size: 13px; }
+  .kf-arrow  { color: var(--dim); }
+  .kf-victim { color: var(--red); font-size: 13px; }
+  .kf-meta   { color: var(--dim); font-size: 10px; letter-spacing: 1px; margin-left: auto; }
+
+  /* ── Profile card ── */
+  .profile-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 28px 32px;
+    margin-bottom: 28px;
+  }
+  .profile-name {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 24px;
+    font-weight: 900;
+    color: var(--gold);
+    letter-spacing: 4px;
+    margin-bottom: 18px;
+  }
+  .profile-stats {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+  .stat-box { text-align: center; }
+  .stat-val {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    display: block;
+    margin-bottom: 4px;
+  }
+  .stat-lbl { color: var(--dim); font-size: 10px; letter-spacing: 3px; }
+
+  /* ── Loading / empty ── */
+  .loading, .empty {
+    color: var(--dim);
+    font-size: 12px;
+    letter-spacing: 3px;
+    text-align: center;
+    padding: 60px 20px;
+  }
+
+  /* ── Section header ── */
+  .sec-head {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--dim);
+    letter-spacing: 4px;
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .refresh-btn {
+    float: right;
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--dim);
+    font-family: inherit;
+    font-size: 10px;
+    letter-spacing: 2px;
+    padding: 4px 12px;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .refresh-btn:hover { border-color: var(--gold); color: var(--gold); }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>⚡ NEON DUEL</h1>
+    <span>STATS &amp; RECORDS</span>
+  </div>
+  <button class="back-btn" onclick="location.href='index.html'">← BACK TO GAME</button>
+</header>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('leaderboard')">🏆 LEADERBOARD</button>
+  <button class="tab" onclick="switchTab('matches')">📊 MATCH HISTORY</button>
+  <button class="tab" onclick="switchTab('kills')">💀 KILL FEED</button>
+  <button class="tab" onclick="switchTab('profile')">👤 PLAYER PROFILE</button>
+</div>
+
+<div class="content">
+
+  <!-- LEADERBOARD -->
+  <div id="panel-leaderboard" class="panel active">
+    <div class="sec-head">TOP PLAYERS <button class="refresh-btn" onclick="loadLeaderboard()">↻ REFRESH</button></div>
+    <div id="lb-body"><div class="loading">LOADING...</div></div>
+  </div>
+
+  <!-- MATCH HISTORY -->
+  <div id="panel-matches" class="panel">
+    <div class="sec-head">RECENT MATCHES <button class="refresh-btn" onclick="loadMatches()">↻ REFRESH</button></div>
+    <div id="match-body"><div class="loading">LOADING...</div></div>
+  </div>
+
+  <!-- KILL FEED -->
+  <div id="panel-kills" class="panel">
+    <div class="sec-head">KILL LOG <button class="refresh-btn" onclick="loadKills()">↻ REFRESH</button></div>
+    <div id="kill-body"><div class="loading">LOADING...</div></div>
+  </div>
+
+  <!-- PLAYER PROFILE -->
+  <div id="panel-profile" class="panel">
+    <div class="search-row">
+      <input id="profile-input" type="text" placeholder="ENTER PLAYER NAME..." maxlength="10"
+             onkeydown="if(event.key==='Enter') searchProfile()">
+      <button onclick="searchProfile()">SEARCH</button>
+    </div>
+    <div id="profile-body"></div>
+  </div>
+
+</div>
+
+<script>
+const BASE = '';  // same origin
+
+// ── Tab switching ──────────────────────────────────────────────
+const loaders = { leaderboard: loadLeaderboard, matches: loadMatches, kills: loadKills };
+let loaded = {};
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', t.textContent.toLowerCase().includes(name) || (name==='leaderboard'&&i===0)||(name==='matches'&&i===1)||(name==='kills'&&i===2)||(name==='profile'&&i===3)));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  if (loaders[name] && !loaded[name]) { loaders[name](); loaded[name] = true; }
+}
+
+// Fix tab active state cleanly
+document.querySelectorAll('.tab').forEach((t, i) => {
+  const names = ['leaderboard','matches','kills','profile'];
+  t.onclick = () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + names[i]).classList.add('active');
+    if (loaders[names[i]] && !loaded[names[i]]) { loaders[names[i]](); loaded[names[i]] = true; }
+  };
+});
+
+// ── Leaderboard ───────────────────────────────────────────────
+async function loadLeaderboard() {
+  const el = document.getElementById('lb-body');
+  el.innerHTML = '<div class="loading">LOADING...</div>';
+  try {
+    const data = await fetch(BASE + '/api/leaderboard').then(r => r.json());
+    if (!data.length) { el.innerHTML = '<div class="empty">NO MATCHES PLAYED YET</div>'; return; }
+    el.innerHTML = `
+      <table class="nd-table">
+        <thead><tr>
+          <th>#</th><th>PLAYER</th><th>WINS</th><th>LOSSES</th>
+          <th>WIN%</th><th>KILLS</th><th>DEATHS</th><th>K/D</th><th>ROUNDS WON</th>
+        </tr></thead>
+        <tbody>${data.map((p, i) => `
+          <tr>
+            <td><span class="rank-num ${i===0?'gold':i===1?'silver':i===2?'bronze':''}">${i+1}</span></td>
+            <td><span class="player-name" onclick="openProfile('${p.name}')">${p.name}</span></td>
+            <td class="win">${p.wins}</td>
+            <td class="loss">${p.losses}</td>
+            <td class="gold-text">${p.win_pct}%</td>
+            <td>${p.kills}</td>
+            <td>${p.deaths}</td>
+            <td class="${p.kd >= 1 ? 'win' : 'loss'}">${p.kd}</td>
+            <td>${p.rounds_won}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+  } catch(e) { el.innerHTML = '<div class="empty">COULD NOT LOAD — IS SERVER RUNNING?</div>'; }
+}
+
+// ── Match history ─────────────────────────────────────────────
+async function loadMatches() {
+  const el = document.getElementById('match-body');
+  el.innerHTML = '<div class="loading">LOADING...</div>';
+  try {
+    const data = await fetch(BASE + '/api/matches').then(r => r.json());
+    if (!data.length) { el.innerHTML = '<div class="empty">NO MATCHES PLAYED YET</div>'; return; }
+    el.innerHTML = `
+      <table class="nd-table">
+        <thead><tr>
+          <th>#</th><th>MODE</th><th>TEAM A</th><th>SCORE</th><th>TEAM B</th><th>WINNER</th><th>DATE</th>
+        </tr></thead>
+        <tbody>${data.map(m => `
+          <tr>
+            <td class="rank-num">${m.id}</td>
+            <td>${m.mode||'2v2'}</td>
+            <td class="team-a">${m.team_a.replace(/,/g,' · ')}</td>
+            <td class="gold-text">${m.score_a} — ${m.score_b}</td>
+            <td class="team-b">${m.team_b.replace(/,/g,' · ')}</td>
+            <td class="${m.winner_team==='A'?'team-a':m.winner_team==='B'?'team-b':'gold-text'}">
+              ${m.winner_team==='DRAW'?'DRAW':'TEAM '+m.winner_team}
+            </td>
+            <td style="color:var(--dim);font-size:10px">${m.played_at?.slice(0,16)||''}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+  } catch(e) { el.innerHTML = '<div class="empty">COULD NOT LOAD — IS SERVER RUNNING?</div>'; }
+}
+
+// ── Kill feed ─────────────────────────────────────────────────
+async function loadKills() {
+  const el = document.getElementById('kill-body');
+  el.innerHTML = '<div class="loading">LOADING...</div>';
+  try {
+    const data = await fetch(BASE + '/api/kills').then(r => r.json());
+    if (!data.length) { el.innerHTML = '<div class="empty">NO KILLS RECORDED YET</div>'; return; }
+    el.innerHTML = data.map(k => `
+      <div class="kf-row">
+        <span class="kf-killer" onclick="openProfile('${k.killer}')" style="cursor:pointer">${k.killer}</span>
+        <span class="kf-arrow">⚡ eliminated</span>
+        <span class="kf-victim" onclick="openProfile('${k.victim}')" style="cursor:pointer">${k.victim}</span>
+        <span class="kf-meta">Round ${k.round_num||'?'} · ${k.ts?.slice(0,16)||''}</span>
+      </div>`).join('');
+  } catch(e) { el.innerHTML = '<div class="empty">COULD NOT LOAD — IS SERVER RUNNING?</div>'; }
+}
+
+// ── Player profile ────────────────────────────────────────────
+function openProfile(name) {
+  document.querySelectorAll('.tab')[3].click();
+  document.getElementById('profile-input').value = name;
+  searchProfile();
+}
+
+async function searchProfile() {
+  const name = document.getElementById('profile-input').value.trim().toUpperCase();
+  if (!name) return;
+  const el = document.getElementById('profile-body');
+  el.innerHTML = '<div class="loading">SEARCHING...</div>';
+  try {
+    const p = await fetch(BASE + '/api/player/' + encodeURIComponent(name)).then(r => r.json());
+    if (p.error) { el.innerHTML = '<div class="empty">PLAYER NOT FOUND</div>'; return; }
+
+    const kd = p.deaths > 0 ? (p.kills / p.deaths).toFixed(2) : p.kills;
+    const winpct = p.matches > 0 ? ((p.wins / p.matches) * 100).toFixed(1) : 0;
+
+    el.innerHTML = `
+      <div class="profile-card">
+        <div class="profile-name">${p.name}</div>
+        <div class="profile-stats">
+          <div class="stat-box"><span class="stat-val win">${p.wins}</span><span class="stat-lbl">WINS</span></div>
+          <div class="stat-box"><span class="stat-val loss">${p.losses}</span><span class="stat-lbl">LOSSES</span></div>
+          <div class="stat-box"><span class="stat-val gold-text">${winpct}%</span><span class="stat-lbl">WIN RATE</span></div>
+          <div class="stat-box"><span class="stat-val">${p.kills}</span><span class="stat-lbl">KILLS</span></div>
+          <div class="stat-box"><span class="stat-val">${p.deaths}</span><span class="stat-lbl">DEATHS</span></div>
+          <div class="stat-box"><span class="stat-val ${kd >= 1 ? 'win' : 'loss'}">${kd}</span><span class="stat-lbl">K/D</span></div>
+          <div class="stat-box"><span class="stat-val">${p.matches}</span><span class="stat-lbl">MATCHES</span></div>
+          <div class="stat-box"><span class="stat-val">${p.rounds_won}</span><span class="stat-lbl">ROUNDS WON</span></div>
+        </div>
+      </div>
+
+      ${p.recent_matches.length ? `
+        <div class="sec-head">RECENT MATCHES</div>
+        <table class="nd-table" style="margin-bottom:28px">
+          <thead><tr><th>#</th><th>MODE</th><th>TEAM A</th><th>SCORE</th><th>TEAM B</th><th>RESULT</th><th>DATE</th></tr></thead>
+          <tbody>${p.recent_matches.map(m => {
+            const onA = m.team_a.split(',').some(n => n.trim()===p.name);
+            const myTeam = onA ? 'A' : 'B';
+            const won = m.winner_team === myTeam;
+            const draw = m.winner_team === 'DRAW';
+            return `<tr>
+              <td class="rank-num">${m.id}</td>
+              <td>${m.mode||'2v2'}</td>
+              <td class="team-a">${m.team_a.replace(/,/g,' · ')}</td>
+              <td class="gold-text">${m.score_a} — ${m.score_b}</td>
+              <td class="team-b">${m.team_b.replace(/,/g,' · ')}</td>
+              <td class="${draw?'gold-text':won?'win':'loss'}">${draw?'DRAW':won?'WIN':'LOSS'}</td>
+              <td style="color:var(--dim);font-size:10px">${m.played_at?.slice(0,16)||''}</td>
+            </tr>`;}).join('')}
+          </tbody>
+        </table>` : ''}
+
+      ${p.recent_kills.length ? `
+        <div class="sec-head">RECENT KILLS</div>
+        ${p.recent_kills.map(k => `
+          <div class="kf-row">
+            <span class="kf-killer">${p.name}</span>
+            <span class="kf-arrow">⚡ eliminated</span>
+            <span class="kf-victim" onclick="openProfile('${k.victim}')" style="cursor:pointer">${k.victim}</span>
+            <span class="kf-meta">${k.ts?.slice(0,16)||''}</span>
+          </div>`).join('')}` : ''}
+    `;
+  } catch(e) { el.innerHTML = '<div class="empty">COULD NOT LOAD — IS SERVER RUNNING?</div>'; }
+}
+
+// Load leaderboard on page open
+loadLeaderboard();
+loaded['leaderboard'] = true;
+</script>
+</body>
+</html>
