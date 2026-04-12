@@ -335,14 +335,14 @@ Scripts must load in this exact order (already correct in `index.html`):
 
 | File | Owner | Responsibility |
 |---|---|---|
-| `server/server.py` | Person 1 | Python backend — WebSocket relay, HTTP serving, SQLite DB |
-| `js/network.js` | Person 1 | WebSocket client, lobby, char select, state sync |
-| `js/characters.js` | Person 2 | Character definitions and ability data |
-| `js/engine.js` | Person 2 | Physics, movement, shooting, abilities, tester mode |
-| `css/styles.css` | Person 3 | All UI and game styles |
-| `js/ui.js` | Person 3 | Canvas rendering, HUD, fog of war, pause menu, keybinds |
-| `index.html` | Person 3 | HTML structure — all screens and game elements |
-| `stats.html` | Person 1 + 3 | Stats dashboard — REST API consumer + UI |
+| `server/server.py` | Aditya | Python backend — WebSocket relay, HTTP serving, SQLite DB |
+| `js/network.js` | Shivam| WebSocket client, lobby, char select, state sync |
+| `js/characters.js` | Shivam | Character definitions and ability data |
+| `js/engine.js` | Shivam | Physics, movement, shooting, abilities, tester mode |
+| `css/styles.css` |  Neeraj | All UI and game styles |
+| `js/ui.js` | Neeraj | Canvas rendering, HUD, fog of war, pause menu, keybinds |
+| `index.html` | Neeraj | HTML structure — all screens and game elements |
+| `stats.html` | Aditya | Stats dashboard — REST API consumer + UI |
 
 ---
 
